@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PM3 · Chemical Consumption Monitor</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+
+  :root{
+    --bg: #F6F7FC;
+    --panel: #FFFFFF;
+    --panel-alt: #F2F4FA;
+    --border: #E5E8F1;
+    --border-soft: #EEF0F8;
+    --text: #23262F;
+    --text-dim: #6B7280;
+    --text-faint: #9AA1B0;
+    --ok: #12B76A;
+    --ok-bg: #E4F9EF;
+    --warn: #F79009;
+    --warn-bg: #FEF1DD;
+    --alert: #F04438;
+    --alert-bg: #FDE7E5;
+    --plan: #6C5CE7;
+    --plan-bg: #EEEBFD;
+    --blue: #4F8DF7;
+    --blue-bg: #E8F1FE;
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .num{ font-variant-numeric: tabular-nums; }
+
+  #app{ max-width: 1180px; margin: 0 auto; padding: 24px 20px 60px; }
+
+  header.top{
+    display:flex; justify-content:space-between; align-items:flex-end;
+    flex-wrap: wrap; gap: 16px;
+    padding-bottom: 20px; margin-bottom: 20px;
+  }
+  .brand-line{ display:flex; align-items:center; gap:10px; }
+  .brand-mark{
+    font-family:'Poppins', sans-serif; font-size:12px; font-weight:600; letter-spacing:0.03em;
+    color: #fff; background: linear-gradient(135deg, #6C5CE7, #4F8DF7);
+    padding:5px 11px; border-radius: 999px;
+  }
+  h1{ font-family:'Poppins', sans-serif; font-size: 21px; font-weight:600; margin:8px 0 4px; color:#1A1D29; }
+  .sub{ color: var(--text-dim); font-size: 13px; }
+
+  .date-box{ display:flex; align-items:center; gap:10px; background:var(--panel); padding:8px 14px; border-radius: 999px; box-shadow: 0 1px 2px rgba(20,20,50,0.06); }
+  .date-box label{ color:var(--text-dim); font-size:12.5px; font-weight:500; }
+  input[type=date]{
+    background: transparent; color: var(--text); border:none;
+    font-family:'Inter',sans-serif; font-weight:600; font-size:13.5px; padding:2px;
+  }
+  input[type=date]:focus{ outline:none; }
+
+  .stats{ display:grid; grid-template-columns: repeat(4,1fr); gap:14px; margin-bottom:22px; }
+  @media (max-width:760px){ .stats{ grid-template-columns: repeat(2,1fr);} }
+  .stat{ background: var(--panel); border-radius: var(--radius); padding:16px 18px;
+    box-shadow: 0 1px 2px rgba(20,20,50,0.05), 0 6px 16px rgba(20,20,50,0.04);
+    border-top: 4px solid var(--accent, var(--plan)); }
+  .stat.c-blue{ --accent: var(--blue); }
+  .stat.c-plan{ --accent: var(--plan); }
+  .stat.c-ok{ --accent: var(--ok); }
+  .stat.c-alert{ --accent: var(--alert); }
+  .stat .label{ color:var(--text-dim); font-size:11.5px; font-weight:600; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:8px; }
+  .stat .value{ font-family:'Poppins',sans-serif; font-size:24px; font-weight:600; }
+  .stat .value.alert{ color: var(--alert); }
+  .stat .value.ok{ color: var(--ok); }
+  .stat .value.plan{ color: var(--plan); }
+
+  .tabbar{ display:inline-flex; gap:4px; margin-bottom:18px; background:var(--panel-alt); padding:4px; border-radius: 999px; }
+  .tabbtn{
+    background:none; border:none; color:var(--text-dim); font-family:'Inter',sans-serif; font-weight:600;
+    font-size:13.5px; padding:9px 18px; cursor:pointer; border-radius: 999px; transition: background .15s, color .15s;
+  }
+  .tabbtn.active{ color:#fff; background: var(--plan); }
+  .tabbtn:not(.active):hover{ color:var(--text); background: #E9EBF6; }
+
+  .panel{ background:var(--panel); border-radius: var(--radius); box-shadow: 0 1px 2px rgba(20,20,50,0.05), 0 6px 20px rgba(20,20,50,0.04); }
+
+  /* ---- upload dropzone ---- */
+  .upload-wrap{ padding:16px 18px; border-bottom:1px solid var(--border-soft); }
+  .dropzone{
+    border: 2px dashed var(--border); border-radius: var(--radius); padding: 20px;
+    display:flex; align-items:center; gap:14px; cursor:pointer; transition: border-color .15s, background .15s;
+    background: var(--panel-alt);
+  }
+  .dropzone.drag-over{ border-color: var(--plan); background: var(--plan-bg); }
+  .dropzone .dz-icon{ font-size:28px; }
+  .dropzone .dz-text b{ display:block; font-size:13.5px; font-weight:700; color:var(--text); }
+  .dropzone .dz-text span{ font-size:12px; color:var(--text-faint); }
+  #file-input{ display:none; }
+  .upload-status{ margin-top:10px; font-size:12.5px; font-weight:600; min-height:16px; }
+  .upload-status.info{ color: var(--blue); }
+  .upload-status.ok{ color: var(--ok); }
+  .upload-status.warn{ color: var(--warn); }
+  .upload-status.alert{ color: var(--alert); }
+
+  .toolbar{ display:flex; justify-content:space-between; align-items:center; padding:16px 18px; border-bottom:1px solid var(--border-soft); flex-wrap:wrap; gap:10px;}
+  .toolbar .hint{ color:var(--text-faint); font-size:12px; }
+  .btn{
+    background: var(--panel-alt); color:var(--text); border:none; border-radius:999px;
+    padding:9px 18px; font-size:13.5px; font-weight:600; font-family:'Inter',sans-serif; cursor:pointer; transition: transform .1s, background .15s;
+  }
+  .btn:hover{ background:#E9EBF6; }
+  .btn:active{ transform: scale(0.97); }
+  .btn.primary{ background: linear-gradient(135deg, #6C5CE7, #4F8DF7); color:#fff; box-shadow: 0 4px 12px rgba(108,92,231,0.35); }
+  .btn.primary:hover{ opacity:0.94; }
+  .btn.ghost{ background:none; border:1px solid var(--border); }
+  .btn:disabled{ opacity:0.5; cursor:not-allowed; }
+
+  table{ width:100%; border-collapse:collapse; }
+  thead th{
+    text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:0.05em;
+    color: var(--text-dim); font-weight:700; padding:11px 12px; border-bottom:2px solid var(--border-soft);
+  }
+  thead th.num-col{ text-align:right; }
+  tbody td{ padding:8px 12px; border-bottom:1px solid var(--border-soft); vertical-align:middle; }
+  tbody tr:nth-child(even){ background: #FBFBFE; }
+  tbody tr:hover{ background: var(--plan-bg); }
+  td.code{ color:#fff; background: var(--text-faint); font-size:10.5px; font-weight:700; white-space:nowrap;
+    border-radius:6px; text-align:center; padding:3px 6px !important; display:inline-block; margin:6px 0 0 6px;}
+  td.name{ font-size:13px; font-weight:500; }
+  .cell-input{
+    width: 92px; background: var(--panel-alt); border:1.5px solid transparent; color:var(--text);
+    font-family:'Inter',sans-serif; font-weight:600; font-size:13px; border-radius:var(--radius-sm); padding:7px 9px;
+    text-align:right; transition: border-color .12s, background .12s;
+  }
+  .cell-input:focus{ outline:none; border-color: var(--plan); background:#fff; }
+  .cell-input.just-filled{ border-color: var(--ok); background: var(--ok-bg); }
+  .diff-cell{ text-align:right; font-size:12.5px; white-space:nowrap; min-width:70px; }
+  .diff-pill{ display:inline-block; padding:4px 10px; border-radius:999px; font-size:11.5px; font-weight:700; }
+  .diff-pill.ok{ color:var(--ok); background:var(--ok-bg); }
+  .diff-pill.warn{ color:var(--warn); background:var(--warn-bg); }
+  .diff-pill.alert{ color:var(--alert); background:var(--alert-bg); }
+  .diff-pill.neutral{ color:var(--text-faint); background: var(--panel-alt); }
+
+  .ov-grid{ display:grid; grid-template-columns: 1.3fr 1fr; gap:18px; }
+  @media (max-width: 860px){ .ov-grid{ grid-template-columns:1fr; } }
+  .ov-card{ padding:18px 20px; }
+  .ov-card h3{ font-family:'Poppins',sans-serif; font-size:14px; margin:0 0 14px; color:#1A1D29; font-weight:600; }
+  .alert-row{ display:flex; justify-content:space-between; align-items:center; padding:11px 0; border-bottom:1px solid var(--border-soft); gap:10px; }
+  .alert-row:last-child{ border-bottom:none; }
+  .alert-row .meta{ font-size:12.5px; }
+  .alert-row .meta .chem{ font-weight:700; }
+  .alert-row .meta .date{ color:var(--text-faint); font-size:11.5px; }
+  .alert-row .pct{ font-size:13.5px; font-weight:700; white-space:nowrap; padding:4px 10px; border-radius:999px; }
+  .empty-note{ color:var(--text-faint); font-size:12.5px; padding: 10px 0; }
+
+  .chem-select{
+    background: var(--panel-alt); color:var(--text); border:1.5px solid transparent; border-radius:999px;
+    padding:9px 14px; font-family:'Inter',sans-serif; font-weight:600; font-size:13px; width:100%; margin-bottom:14px;
+  }
+  .chem-select:focus{ outline:none; border-color:var(--plan); }
+  .legend{ display:flex; gap:16px; font-size:11.5px; color:var(--text-dim); margin-top:8px; flex-wrap:wrap; font-weight:600;}
+  .legend span{ display:flex; align-items:center; gap:6px; }
+  .legend i{ width:10px; height:10px; border-radius:50%; display:inline-block; }
+  canvas{ width:100%; display:block; }
+
+  footer.foot{ margin-top:28px; color:var(--text-faint); font-size:11.5px; text-align:center; line-height:1.7; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <header class="top">
+    <div>
+      <div class="brand-line">
+        <span class="brand-mark">PM3</span>
+        <h1>Chemical Consumption Monitor</h1>
+      </div>
+      <div class="sub">เทียบยอดรับจริง–แผนรับ และยอดเติมจริง–ยอดใช้งาน · แจ้งเตือนเมื่อคลาดเคลื่อนเกิน ±5%</div>
+    </div>
+    <div class="date-box">
+      <label for="date-picker">📅 วันที่บันทึก</label>
+      <input type="date" id="date-picker">
+    </div>
+  </header>
+
+  <div class="stats" id="stat-strip"></div>
+
+  <div class="tabbar">
+    <button class="tabbtn active" data-tab="entry">บันทึกข้อมูลรายวัน</button>
+    <button class="tabbtn" data-tab="overview">ภาพรวมและแจ้งเตือน</button>
+  </div>
+
+  <section id="tab-entry">
+    <div class="panel">
+      <div class="upload-wrap">
+        <div class="dropzone" id="dropzone">
+          <div class="dz-icon">📤</div>
+          <div class="dz-text">
+            <b>ลากไฟล์หรือรูปมาวางที่นี่ เพื่อดึงข้อมูลอัตโนมัติด้วย AI</b>
+            <span>รองรับรูปถ่าย (JPG/PNG), PDF, CSV, Excel — วางได้หลายไฟล์พร้อมกัน ระบบจะจับคู่ตามวันที่ที่เลือกด้านบนแล้วบันทึกให้อัตโนมัติ</span>
+          </div>
+        </div>
+        <input type="file" id="file-input" multiple accept=".png,.jpg,.jpeg,.webp,.pdf,.csv,.xlsx,.xls">
+        <div class="upload-status" id="upload-status"></div>
+      </div>
+      <div class="toolbar">
+        <div class="hint">หรือกรอกด้วยตนเอง — ระบบคำนวณ % ส่วนต่างให้อัตโนมัติ</div>
+        <div style="display:flex; gap:8px;">
+          <button class="btn ghost" id="btn-copy-plan">↺ ดึงแผนจากวันล่าสุด</button>
+          <button class="btn primary" id="btn-save">💾 บันทึกข้อมูลวันนี้</button>
+        </div>
+      </div>
+      <div style="overflow-x:auto;">
+        <table id="entry-table">
+          <thead>
+            <tr>
+              <th style="width:70px;">CK</th>
+              <th>ชื่อสารเคมี</th>
+              <th class="num-col">แผนรับ</th>
+              <th class="num-col">รับจริง</th>
+              <th class="num-col">% ต่าง (รับ)</th>
+              <th class="num-col">เติมจริง</th>
+              <th class="num-col">ใช้จริง</th>
+              <th class="num-col">% ต่าง (ใช้)</th>
+            </tr>
+          </thead>
+          <tbody id="entry-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-overview" hidden>
+    <div class="ov-grid">
+      <div class="panel ov-card">
+        <h3>🔔 รายการแจ้งเตือนล่าสุด (คลาดเคลื่อนเกิน ±5%)</h3>
+        <div id="alert-feed"></div>
+      </div>
+      <div class="panel ov-card">
+        <h3>📈 แนวโน้มรายสารเคมี</h3>
+        <select class="chem-select" id="trend-select"></select>
+        <canvas id="chart-receive" height="130"></canvas>
+        <div class="legend">
+          <span><i style="background:#6C5CE7"></i>แผนรับ</span>
+          <span><i style="background:#12B76A"></i>รับจริง</span>
+        </div>
+        <div style="height:18px;"></div>
+        <canvas id="chart-usage" height="130"></canvas>
+        <div class="legend">
+          <span><i style="background:#6C5CE7"></i>ใช้จริง</span>
+          <span><i style="background:#F79009"></i>เติมจริง</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="foot">
+    ข้อมูลบันทึกไว้ในบัญชี Claude ของคุณเท่านั้น (ส่วนตัว ไม่แชร์กับผู้อื่น) · เกณฑ์แจ้งเตือน: ส่วนต่างเกิน ±5% ของแผน/ยอดใช้งาน<br>
+    การดึงข้อมูลจากไฟล์/รูปภาพใช้ AI ช่วยอ่าน — กรุณาตรวจสอบตัวเลขอีกครั้งก่อนใช้งานจริง
+  </footer>
+
+</div>
+
+<script>
+const CHEMICALS = [
+  {code:'CK001', name:'Native starch', aliases:['Native']},
+  {code:'CK002', name:'Wet End Starch / Cato', aliases:['Cato','Wet End Starch']},
+  {code:'CK003', name:'CPAM / Fennopol K4230T', aliases:['CPAM','Fennopol']},
+  {code:'CK004', name:'APAM'},
+  {code:'CK005', name:'Di OBA', aliases:['OBA Di']},
+  {code:'CK006', name:'Tetra OBA', aliases:['OBA Tetra']},
+  {code:'CK007', name:'ASA / AS2300', aliases:['ASA']},
+  {code:'CK008', name:'Surface Size / S55', aliases:['Surface Size','S55']},
+  {code:'CK009', name:'Dye-Blue', aliases:['DYE Blue']},
+  {code:'CK010', name:'Dye-Violet', aliases:['DYE Violet']},
+  {code:'CK011', name:'Enzym Starch / BAN480L', aliases:['Enzyme Starch']},
+  {code:'CK012', name:'Enzym LBKP (Gallon)', aliases:['Enzyme LBKP Gallon']},
+  {code:'CK013', name:'Defoamer / Kuriless 525', aliases:['Defoamer']},
+  {code:'CK014', name:'Sodium Chloride (NaCL)', aliases:['NaCl']},
+  {code:'CK015', name:'Enzym LBKP (Bulk)-Kg', aliases:['Enzyme LBKP Kg','Enzyme LBKP Bulk']},
+  {code:'CK016', name:'Sodium Hypochloride (NaOCl)', aliases:['NaOCl','Sodium Hypochlorite']},
+  {code:'CK017', name:'Biocide'},
+  {code:'CK018', name:'BMA'},
+  {code:'CK019', name:'Kurita s-6200B'},
+  {code:'CK020', name:'Kurita NT-2570'},
+  {code:'CK021', name:'NaOH'},
+];
+const THRESHOLD = 5;
+const KEY_PREFIX = 'entry:';
+
+function todayStr(){
+  const d = new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+
+function pct(actual, base){
+  const a = parseFloat(actual), b = parseFloat(base);
+  if(isNaN(a) || isNaN(b) || b === 0) return null;
+  return ((a-b)/b)*100;
+}
+function pillClass(p){
+  if(p === null) return 'neutral';
+  const ab = Math.abs(p);
+  if(ab > THRESHOLD) return 'alert';
+  if(ab > THRESHOLD*0.6) return 'warn';
+  return 'ok';
+}
+function fmtPct(p){
+  if(p === null) return '—';
+  const s = p>0 ? '+' : '';
+  return s + p.toFixed(1) + '%';
+}
+
+let currentDate = todayStr();
+let cache = {};
+let allDatesCache = null;
+let isProcessingUpload = false;
+
+async function loadEntry(date){
+  if(cache[date]) return cache[date];
+  try{
+    const res = await window.storage.get(KEY_PREFIX+date, false);
+    const obj = res ? JSON.parse(res.value) : {date, items:{}};
+    cache[date] = obj;
+    return obj;
+  }catch(e){
+    const obj = {date, items:{}};
+    cache[date] = obj;
+    return obj;
+  }
+}
+
+async function saveEntry(date){
+  const items = {};
+  CHEMICALS.forEach(c=>{
+    items[c.code] = {
+      plan: getVal('plan-'+c.code),
+      actual: getVal('actual-'+c.code),
+      dispense: getVal('dispense-'+c.code),
+      usage: getVal('usage-'+c.code),
+    };
+  });
+  const obj = {date, items, savedAt: new Date().toISOString()};
+  cache[date] = obj;
+  try{
+    await window.storage.set(KEY_PREFIX+date, JSON.stringify(obj), false);
+    allDatesCache = null;
+    renderStatStrip(obj);
+    flashSaved();
+  }catch(e){
+    alert('บันทึกไม่สำเร็จ ลองอีกครั้ง');
+    console.error(e);
+  }
+}
+
+function getVal(id){
+  const el = document.getElementById(id);
+  if(!el) return '';
+  const v = el.value.trim();
+  return v === '' ? '' : parseFloat(v);
+}
+function setVal(id, v){
+  const el = document.getElementById(id);
+  if(el) el.value = (v === '' || v === undefined || v === null) ? '' : v;
+}
+
+function flashSaved(){
+  const btn = document.getElementById('btn-save');
+  const original = btn.textContent;
+  btn.textContent = '✓ บันทึกแล้ว';
+  setTimeout(()=>{ btn.textContent = original; }, 1400);
+}
+
+function buildEntryTable(){
+  const tbody = document.getElementById('entry-tbody');
+  tbody.innerHTML = '';
+  CHEMICALS.forEach(c=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><span class="code">${c.code}</span></td>
+      <td class="name">${c.name}</td>
+      <td class="num-col"><input class="cell-input" type="number" step="any" id="plan-${c.code}" data-code="${c.code}" data-role="plan"></td>
+      <td class="num-col"><input class="cell-input" type="number" step="any" id="actual-${c.code}" data-code="${c.code}" data-role="actual"></td>
+      <td class="diff-cell" id="diff-receive-${c.code}"><span class="diff-pill neutral">—</span></td>
+      <td class="num-col"><input class="cell-input" type="number" step="any" id="dispense-${c.code}" data-code="${c.code}" data-role="dispense"></td>
+      <td class="num-col"><input class="cell-input" type="number" step="any" id="usage-${c.code}" data-code="${c.code}" data-role="usage"></td>
+      <td class="diff-cell" id="diff-usage-${c.code}"><span class="diff-pill neutral">—</span></td>
+    `;
+    tbody.appendChild(tr);
+  });
+  tbody.addEventListener('input', (e)=>{
+    const code = e.target.getAttribute('data-code');
+    if(code) updateRowDiff(code);
+  });
+}
+
+function updateRowDiff(code){
+  const plan = getVal('plan-'+code), actual = getVal('actual-'+code);
+  const dispense = getVal('dispense-'+code), usage = getVal('usage-'+code);
+  const pR = pct(actual, plan);
+  const pU = pct(dispense, usage);
+  document.getElementById('diff-receive-'+code).innerHTML =
+    `<span class="diff-pill ${pillClass(pR)}">${fmtPct(pR)}</span>`;
+  document.getElementById('diff-usage-'+code).innerHTML =
+    `<span class="diff-pill ${pillClass(pU)}">${fmtPct(pU)}</span>`;
+  updateStatStripLive();
+}
+
+function populateTableFromEntry(entry){
+  CHEMICALS.forEach(c=>{
+    const it = (entry.items && entry.items[c.code]) || {};
+    setVal('plan-'+c.code, it.plan ?? '');
+    setVal('actual-'+c.code, it.actual ?? '');
+    setVal('dispense-'+c.code, it.dispense ?? '');
+    setVal('usage-'+c.code, it.usage ?? '');
+    updateRowDiff(c.code);
+  });
+}
+
+function countAlertsInEntry(entry){
+  let n = 0;
+  let logged = 0;
+  CHEMICALS.forEach(c=>{
+    const it = (entry.items && entry.items[c.code]) || {};
+    const hasAny = it.plan!=='' && it.plan!=null || it.actual!=='' && it.actual!=null || it.dispense!=='' && it.dispense!=null || it.usage!=='' && it.usage!=null;
+    if(hasAny) logged++;
+    const pR = pct(it.actual, it.plan);
+    const pU = pct(it.dispense, it.usage);
+    if(pR !== null && Math.abs(pR) > THRESHOLD) n++;
+    if(pU !== null && Math.abs(pU) > THRESHOLD) n++;
+  });
+  return {alerts:n, logged};
+}
+
+function updateStatStripLive(){
+  const items = {};
+  CHEMICALS.forEach(c=>{
+    items[c.code] = {
+      plan: getVal('plan-'+c.code), actual: getVal('actual-'+c.code),
+      dispense: getVal('dispense-'+c.code), usage: getVal('usage-'+c.code)
+    };
+  });
+  renderStatStrip({date: currentDate, items, savedAt: cache[currentDate] ? cache[currentDate].savedAt : null});
+}
+
+function renderStatStrip(entry){
+  const {alerts, logged} = countAlertsInEntry(entry);
+  const savedAt = entry.savedAt ? new Date(entry.savedAt).toLocaleString('th-TH', {hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit'}) : 'ยังไม่บันทึก';
+  const strip = document.getElementById('stat-strip');
+  strip.innerHTML = `
+    <div class="stat c-blue"><div class="label">รายการที่กรอกแล้ว</div><div class="value" style="color:var(--blue)">${logged} / ${CHEMICALS.length}</div></div>
+    <div class="stat ${alerts>0?'c-alert':'c-ok'}"><div class="label">แจ้งเตือนวันนี้</div><div class="value ${alerts>0?'alert':'ok'}">${alerts}</div></div>
+    <div class="stat c-plan"><div class="label">เกณฑ์แจ้งเตือน</div><div class="value plan">±${THRESHOLD}%</div></div>
+    <div class="stat c-blue"><div class="label">บันทึกล่าสุด</div><div class="value" style="font-size:15px; font-weight:600; color:var(--text)">${savedAt}</div></div>
+  `;
+}
+
+async function getAllDates(){
+  if(allDatesCache) return allDatesCache;
+  try{
+    const res = await window.storage.list(KEY_PREFIX, false);
+    const keys = (res && res.keys) ? res.keys : [];
+    const dates = keys.map(k=>k.replace(KEY_PREFIX,'')).sort();
+    allDatesCache = dates;
+    return dates;
+  }catch(e){
+    return [];
+  }
+}
+
+async function findLatestPriorDate(beforeDate){
+  const dates = await getAllDates();
+  const prior = dates.filter(d=>d < beforeDate).sort();
+  return prior.length ? prior[prior.length-1] : null;
+}
+
+async function copyPlanFromLatest(){
+  const prior = await findLatestPriorDate(currentDate);
+  if(!prior){ alert('ยังไม่มีข้อมูลวันก่อนหน้าให้ดึง'); return; }
+  const entry = await loadEntry(prior);
+  CHEMICALS.forEach(c=>{
+    const cur = getVal('plan-'+c.code);
+    if(cur === ''){
+      const it = (entry.items && entry.items[c.code]) || {};
+      if(it.plan !== '' && it.plan != null) setVal('plan-'+c.code, it.plan);
+    }
+  });
+  CHEMICALS.forEach(c=>updateRowDiff(c.code));
+}
+
+/* ================= AI FILE / IMAGE EXTRACTION ================= */
+
+function setStatus(msg, type){
+  const el = document.getElementById('upload-status');
+  el.textContent = msg;
+  el.className = 'upload-status ' + (type||'info');
+}
+
+function buildExtractPrompt(){
+  const d = new Date(currentDate+'T00:00:00');
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const altFmt = `${d.getDate()}-${months[d.getMonth()]}-${String(d.getFullYear()).slice(2)}`;
+  const chemList = CHEMICALS.map(c=> `${c.code}: ${c.name}${c.aliases? ' (หรือเรียกว่า '+c.aliases.join(', ')+')':''}`).join('\n');
+  return `รายชื่อสารเคมีมาตรฐานที่ต้องจับคู่ (รหัส: ชื่อ):
+${chemList}
+
+วันที่ต้องการดึงข้อมูล: ${currentDate} (อาจปรากฏในเอกสารเป็นรูปแบบ ${altFmt} หรือรูปแบบวันที่อื่น)
+
+จากเอกสาร/รูปภาพ/ไฟล์ที่แนบมา ให้หาตัวเลขของสารเคมีแต่ละตัวที่ตรงกับวันที่ข้างต้นเท่านั้น (ถ้าเอกสารมีข้อมูลหลายวันให้เลือกเฉพาะแถวที่ตรงกับวันที่ระบุ ถ้าเอกสารมีข้อมูลวันเดียวให้ใช้ค่านั้นได้เลย) แยกออกเป็น 4 ประเภทตามที่พบ:
+- plan: แผนรับสินค้า / แผนรับเคมี
+- actual: ยอดรับจริง / รับเข้าจริง
+- dispense: ยอดจ่ายออก / เติมจริงเข้ากระบวนการ
+- usage: ยอดใช้งานจริง (Chemical Usage)
+
+ตอบกลับเป็น JSON object เดียวเท่านั้น ห้ามมีคำอธิบายหรือ markdown ใดๆ ทั้งสิ้น โดย key คือรหัสสารเคมี (เช่น "CK001") และ value เป็น {"plan": ตัวเลขหรือ null, "actual": ตัวเลขหรือ null, "dispense": ตัวเลขหรือ null, "usage": ตัวเลขหรือ null} ใส่เฉพาะรหัสที่พบข้อมูลอย่างน้อยหนึ่งค่าเท่านั้น ห้ามเดาตัวเลขที่ไม่มีในเอกสาร ถ้าไม่พบสารเคมีใดเลยให้ตอบ {}`;
+}
+
+async function fileToBase64(file){
+  return new Promise((resolve, reject)=>{
+    const r = new FileReader();
+    r.onload = ()=> resolve(r.result.split(',')[1]);
+    r.onerror = ()=> reject(new Error('อ่านไฟล์ไม่สำเร็จ'));
+    r.readAsDataURL(file);
+  });
+}
+
+async function fileToArrayBuffer(file){
+  return new Promise((resolve, reject)=>{
+    const r = new FileReader();
+    r.onload = ()=> resolve(r.result);
+    r.onerror = ()=> reject(new Error('อ่านไฟล์ไม่สำเร็จ'));
+    r.readAsArrayBuffer(file);
+  });
+}
+
+function pickRelevantSheetCsv(workbook){
+  const d = new Date(currentDate+'T00:00:00');
+  const monthAbbr = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'][d.getMonth()];
+  const year = String(d.getFullYear());
+  const names = workbook.SheetNames || [];
+  const match = names.find(n => n.toLowerCase().includes(monthAbbr) && n.includes(year));
+  const targetNames = match ? [match] : names;
+  let csv = '';
+  targetNames.forEach(name=>{
+    const sheet = workbook.Sheets[name];
+    if(!sheet) return;
+    csv += `\n[Sheet: ${name}]\n` + XLSX.utils.sheet_to_csv(sheet);
+  });
+  if(csv.length > 30000) csv = csv.slice(0, 30000) + '\n...(ตัดข้อมูลส่วนที่เหลือ)';
+  return csv.trim();
+}
+
+async function fileToContentBlocks(file){
+  const ext = file.name.split('.').pop().toLowerCase();
+  const prompt = buildExtractPrompt();
+
+  if(ext === 'csv'){
+    const text = await file.text();
+    return [{type:'text', text: prompt + `\n\nข้อมูลจากไฟล์ CSV (${file.name}):\n${text.slice(0,30000)}`}];
+  }
+  if(ext === 'xlsx' || ext === 'xls'){
+    const buf = await fileToArrayBuffer(file);
+    const wb = XLSX.read(buf, {type:'array'});
+    const csv = pickRelevantSheetCsv(wb);
+    return [{type:'text', text: prompt + `\n\nข้อมูลจากไฟล์ Excel (${file.name}):\n${csv}`}];
+  }
+  if(ext === 'pdf'){
+    const base64 = await fileToBase64(file);
+    return [
+      {type:'document', source:{type:'base64', media_type:'application/pdf', data: base64}},
+      {type:'text', text: prompt}
+    ];
+  }
+  // treat as image
+  const base64 = await fileToBase64(file);
+  const mediaType = file.type || (ext === 'png' ? 'image/png' : 'image/jpeg');
+  return [
+    {type:'image', source:{type:'base64', media_type: mediaType, data: base64}},
+    {type:'text', text: prompt}
+  ];
+}
+
+async function callClaudeExtract(contentBlocks){
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 1200,
+      system: 'คุณเป็นระบบดึงข้อมูลตัวเลขจากเอกสารโรงงาน ตอบกลับเป็น JSON ที่ถูกต้องตามรูปแบบที่ร้องขอเท่านั้น ห้ามมีข้อความอื่นนอกเหนือจาก JSON และห้ามใส่ ```json',
+      messages: [{role:'user', content: contentBlocks}]
+    })
+  });
+  const data = await response.json();
+  if(data.error) throw new Error(data.error.message || 'API error');
+  const textBlock = (data.content || []).find(b => b.type === 'text');
+  if(!textBlock) throw new Error('ไม่ได้รับข้อความตอบกลับ');
+  let raw = textBlock.text.trim();
+  raw = raw.replace(/^```json/i, '').replace(/^```/, '').replace(/```$/, '').trim();
+  return JSON.parse(raw);
+}
+
+function mergeExtracted(json){
+  let updated = 0;
+  const touchedIds = [];
+  Object.keys(json || {}).forEach(code=>{
+    if(!CHEMICALS.find(c => c.code === code)) return;
+    const vals = json[code] || {};
+    ['plan','actual','dispense','usage'].forEach(field=>{
+      const v = vals[field];
+      if(v !== null && v !== undefined && v !== '' && !isNaN(parseFloat(v))){
+        const id = field+'-'+code;
+        setVal(id, parseFloat(v));
+        touchedIds.push(id);
+        updated++;
+      }
+    });
+  });
+  CHEMICALS.forEach(c => updateRowDiff(c.code));
+  touchedIds.forEach(id=>{
+    const el = document.getElementById(id);
+    if(el){
+      el.classList.add('just-filled');
+      setTimeout(()=> el.classList.remove('just-filled'), 2200);
+    }
+  });
+  return updated;
+}
+
+async function handleFiles(fileList){
+  if(isProcessingUpload) return;
+  const files = Array.from(fileList || []);
+  if(files.length === 0) return;
+  isProcessingUpload = true;
+  document.getElementById('dropzone').style.pointerEvents = 'none';
+  let totalUpdated = 0;
+  try{
+    for(const file of files){
+      setStatus(`กำลังวิเคราะห์ไฟล์ "${file.name}" ด้วย AI…`, 'info');
+      const blocks = await fileToContentBlocks(file);
+      const json = await callClaudeExtract(blocks);
+      totalUpdated += mergeExtracted(json);
+    }
+    if(totalUpdated > 0){
+      await saveEntry(currentDate);
+      setStatus(`สำเร็จ: อัปเดต ${totalUpdated} ค่า และบันทึกให้อัตโนมัติแล้ว ✅ กรุณาตรวจสอบตัวเลขอีกครั้ง`, 'ok');
+    }else{
+      setStatus('ไม่พบข้อมูลของสารเคมีในรายการที่ตรงกับไฟล์นี้ ลองไฟล์อื่นหรือกรอกด้วยตนเอง', 'warn');
+    }
+  }catch(err){
+    console.error(err);
+    setStatus('เกิดข้อผิดพลาดระหว่างอ่านไฟล์: ' + err.message, 'alert');
+  }finally{
+    isProcessingUpload = false;
+    document.getElementById('dropzone').style.pointerEvents = 'auto';
+  }
+}
+
+function setupDropzone(){
+  const dz = document.getElementById('dropzone');
+  const input = document.getElementById('file-input');
+  dz.addEventListener('click', ()=> input.click());
+  input.addEventListener('change', (e)=>{ handleFiles(e.target.files); input.value = ''; });
+  ['dragenter','dragover'].forEach(evt=>{
+    dz.addEventListener(evt, (e)=>{ e.preventDefault(); dz.classList.add('drag-over'); });
+  });
+  ['dragleave','drop'].forEach(evt=>{
+    dz.addEventListener(evt, (e)=>{ e.preventDefault(); dz.classList.remove('drag-over'); });
+  });
+  dz.addEventListener('drop', (e)=>{
+    const files = e.dataTransfer.files;
+    handleFiles(files);
+  });
+}
+
+/* ================= OVERVIEW TAB ================= */
+
+async function renderOverview(){
+  await renderAlertFeed();
+  await renderTrendSelect();
+  await renderCharts();
+}
+
+async function renderAlertFeed(){
+  const dates = (await getAllDates()).slice().sort().reverse().slice(0, 30);
+  const feed = document.getElementById('alert-feed');
+  const rows = [];
+  for(const d of dates){
+    const entry = await loadEntry(d);
+    CHEMICALS.forEach(c=>{
+      const it = (entry.items && entry.items[c.code]) || {};
+      const pR = pct(it.actual, it.plan);
+      const pU = pct(it.dispense, it.usage);
+      if(pR !== null && Math.abs(pR) > THRESHOLD){
+        rows.push({date:d, code:c.code, name:c.name, kind:'รับจริง vs แผนรับ', pct:pR});
+      }
+      if(pU !== null && Math.abs(pU) > THRESHOLD){
+        rows.push({date:d, code:c.code, name:c.name, kind:'เติมจริง vs ใช้จริง', pct:pU});
+      }
+    });
+  }
+  if(rows.length === 0){
+    feed.innerHTML = '<div class="empty-note">ยังไม่พบส่วนต่างเกินเกณฑ์ในข้อมูลที่บันทึกไว้ 🎉</div>';
+    return;
+  }
+  rows.sort((a,b)=> a.date < b.date ? 1 : (a.date > b.date ? -1 : Math.abs(b.pct)-Math.abs(a.pct)));
+  feed.innerHTML = rows.slice(0,40).map(r=>`
+    <div class="alert-row">
+      <div class="meta"><span class="chem">${r.code} ${r.name}</span><br><span class="date">${r.date} · ${r.kind}</span></div>
+      <div class="pct" style="color:${Math.abs(r.pct)>THRESHOLD ? 'var(--alert)':'var(--warn)'}; background:${Math.abs(r.pct)>THRESHOLD ? 'var(--alert-bg)':'var(--warn-bg)'}">${fmtPct(r.pct)}</div>
+    </div>
+  `).join('');
+}
+
+async function renderTrendSelect(){
+  const sel = document.getElementById('trend-select');
+  if(sel.options.length) return;
+  sel.innerHTML = CHEMICALS.map(c=>`<option value="${c.code}">${c.code} — ${c.name}</option>`).join('');
+  sel.addEventListener('change', renderCharts);
+}
+
+function drawLineChart(canvas, series, colors){
+  const ctx = canvas.getContext('2d');
+  const w = canvas.clientWidth || 500;
+  const h = canvas.height;
+  canvas.width = w * devicePixelRatio;
+  canvas.height = h * devicePixelRatio;
+  canvas.style.height = h+'px';
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+  ctx.clearRect(0,0,w,h);
+
+  const allVals = series.flat().filter(v=>v!==null && !isNaN(v));
+  if(allVals.length === 0){
+    ctx.fillStyle = '#9AA1B0';
+    ctx.font = '12px Inter';
+    ctx.fillText('ยังไม่มีข้อมูลสำหรับสารเคมีนี้', 10, h/2);
+    return;
+  }
+  const maxV = Math.max(...allVals, 0.0001);
+  const minV = Math.min(0, ...allVals);
+  const padL = 8, padR = 8, padT = 10, padB = 10;
+  const plotW = w - padL - padR, plotH = h - padT - padB;
+  const n = series[0].length;
+
+  ctx.strokeStyle = '#EEF0F8';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(padL, h - padB);
+  ctx.lineTo(w - padR, h - padB);
+  ctx.stroke();
+
+  series.forEach((s, si)=>{
+    ctx.strokeStyle = colors[si];
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    let started = false;
+    s.forEach((v, i)=>{
+      if(v === null || isNaN(v)) return;
+      const x = padL + (n<=1 ? 0 : (i/(n-1))*plotW);
+      const y = padT + plotH - ((v-minV)/(maxV-minV||1))*plotH;
+      if(!started){ ctx.moveTo(x,y); started = true; } else { ctx.lineTo(x,y); }
+    });
+    ctx.stroke();
+    ctx.fillStyle = colors[si];
+    s.forEach((v, i)=>{
+      if(v === null || isNaN(v)) return;
+      const x = padL + (n<=1 ? 0 : (i/(n-1))*plotW);
+      const y = padT + plotH - ((v-minV)/(maxV-minV||1))*plotH;
+      ctx.beginPath(); ctx.arc(x,y,2.5,0,Math.PI*2); ctx.fill();
+    });
+  });
+}
+
+async function renderCharts(){
+  const code = document.getElementById('trend-select').value;
+  if(!code) return;
+  const dates = (await getAllDates()).slice().sort().slice(-30);
+  const plan=[], actual=[], usage=[], dispense=[];
+  for(const d of dates){
+    const entry = await loadEntry(d);
+    const it = (entry.items && entry.items[code]) || {};
+    plan.push(it.plan!=='' && it.plan!=null ? parseFloat(it.plan) : null);
+    actual.push(it.actual!=='' && it.actual!=null ? parseFloat(it.actual) : null);
+    dispense.push(it.dispense!=='' && it.dispense!=null ? parseFloat(it.dispense) : null);
+    usage.push(it.usage!=='' && it.usage!=null ? parseFloat(it.usage) : null);
+  }
+  drawLineChart(document.getElementById('chart-receive'), [plan, actual], ['#6C5CE7', '#12B76A']);
+  drawLineChart(document.getElementById('chart-usage'), [usage, dispense], ['#6C5CE7', '#F79009']);
+}
+
+/* ================= WIRING ================= */
+
+async function switchDate(date){
+  currentDate = date;
+  const entry = await loadEntry(date);
+  populateTableFromEntry(entry);
+  renderStatStrip(entry);
+  setStatus('', 'info');
+}
+
+function setupTabs(){
+  const btns = document.querySelectorAll('.tabbtn');
+  btns.forEach(b=>{
+    b.addEventListener('click', ()=>{
+      btns.forEach(x=>x.classList.remove('active'));
+      b.classList.add('active');
+      const tab = b.getAttribute('data-tab');
+      document.getElementById('tab-entry').hidden = tab !== 'entry';
+      document.getElementById('tab-overview').hidden = tab !== 'overview';
+      if(tab === 'overview') renderOverview();
+    });
+  });
+}
+
+async function init(){
+  buildEntryTable();
+  setupTabs();
+  setupDropzone();
+  const picker = document.getElementById('date-picker');
+  picker.value = currentDate;
+  picker.addEventListener('change', (e)=> switchDate(e.target.value));
+  document.getElementById('btn-save').addEventListener('click', ()=> saveEntry(currentDate));
+  document.getElementById('btn-copy-plan').addEventListener('click', copyPlanFromLatest);
+  await switchDate(currentDate);
+}
+init();
+</script>
+</body>
+</html>
